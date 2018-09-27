@@ -1,0 +1,21 @@
+{
+  "name": "@simonbuchan/users",
+  "version": "0.1.0",
+  "license": "MIT",
+  "os": ["win32"],
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "gypfile": true,
+  "dependencies": {
+    "bindings": "^1.3.0",
+    "nan": "^2.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^10.11.0",
+    "prettier": "^1.14.3",
+    "typescript": "~3.0.3"
+  },
+  "prettier": {
+    "trailingComma": "all"
+  }
+}
