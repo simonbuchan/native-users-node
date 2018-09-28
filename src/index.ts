@@ -79,18 +79,24 @@ export function get(name: string): UserInfo {
   return native.get(name);
 }
 
-export function add(name: string, password: string, flags: Flags = 0): void {
+export function add(name: string, password: string, flags: Flags = 0): boolean {
   assert(typeof name === "string");
   assert(typeof password === "string");
   assert(typeof flags === "number");
-  // flags |= Flags.SCRIPT;
-  // if (!(flags & Flags.ACCOUNT_TYPE_MASK)) {
-  //   flags |= Flags.NORMAL_ACCOUNT;
-  // }
-  native.add(name, password, flags);
+  return native.add(name, password, flags);
 }
 
-export function del(name: string): void {
+export function del(name: string): boolean {
   assert(typeof name === "string");
-  native.del(name);
+  return native.del(name);
+}
+
+export function createProfile(name: string): boolean {
+  assert(typeof name === "string");
+  return native.createProfile(name);
+}
+
+export function deleteProfile(name: string): boolean {
+  assert(typeof name === "string");
+  return native.deleteProfile(name);
 }
