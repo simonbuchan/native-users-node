@@ -2,8 +2,10 @@
 
 Node addon package for exposing native Windows user management APIs.
 
-Not terribly complete as of yet, for example, it does not support 
-If you can think of a good name that isn't taken or ugly, I'm listening! 😉
+Not terribly complete as of yet, for example, it does not support listing, groups, updating existing users,
+or accessing global options. Feature requests welcome!
+
+If you can think of a good package name that isn't taken or ugly, I'm listening! 😉
 
 ## APIs
 
