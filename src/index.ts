@@ -66,6 +66,7 @@ export enum Flags {
     PARTIAL_SECRETS_ACCOUNT,
 }
 
+// lmaccess.h USER_INFO_23
 export interface UserInfo {
   name: string;
   full_name: string;
@@ -74,7 +75,27 @@ export interface UserInfo {
   sid: string;
 }
 
-export function get(name: string): UserInfo {
+// from winbase.h
+export enum LogonType {
+  INTERACTIVE = 2,
+  NETWORK = 3,
+  BATCH = 4,
+  SERVICE = 5,
+  UNLOCK = 7,
+  NETWORK_CLEARTEXT = 8,
+  NEW_CREDENTIALS = 9,
+}
+
+// from winbase.h
+export enum LogonProvider {
+  DEFAULT = 0,
+  WINNT35 = 1,
+  WINNT40 = 2,
+  WINNT50 = 3,
+  VIRTUAL = 4,
+}
+
+export function get(name: string): UserInfo | null {
   assert(typeof name === "string");
   return native.get(name);
 }
@@ -91,7 +112,7 @@ export function del(name: string): boolean {
   return native.del(name);
 }
 
-export function createProfile(name: string): boolean {
+export function createProfile(name: string): string | null {
   assert(typeof name === "string");
   return native.createProfile(name);
 }
@@ -99,4 +120,43 @@ export function createProfile(name: string): boolean {
 export function deleteProfile(name: string): boolean {
   assert(typeof name === "string");
   return native.deleteProfile(name);
+}
+
+export function changePassword(
+  name: string,
+  oldPassword: string,
+  newPassword: string,
+): void {
+  return native.changePassword(name, oldPassword, newPassword);
+}
+
+export function logonUser(
+  name: string,
+  password: string,
+  domain: string = ".",
+  type: LogonType = LogonType.NETWORK,
+  provider: LogonProvider = LogonProvider.DEFAULT,
+): unknown {
+  assert(typeof name === "string");
+  assert(typeof domain === "string");
+  assert(typeof password === "string");
+  assert(typeof type === "number");
+  assert(typeof provider === "number");
+  return native.logonUser(name, domain, password, type, provider);
+}
+
+export function impersonateLoggedOnUser(handle: unknown): void {
+  return native.impersonateLoggedOnUser(handle);
+}
+
+export function revertToSelf(): void {
+  return native.revertToSelf();
+}
+
+export function getUserProfileDirectory(handle: unknown): string {
+  return native.getUserProfileDirectory(handle);
+}
+
+export function closeHandle(handle: unknown): void {
+  return native.revertToSelf();
 }
