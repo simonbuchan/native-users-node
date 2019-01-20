@@ -1,4 +1,4 @@
-const assert = require("assert");
+const assert = require("assert").strict;
 const users = require("./lib");
 
 const flagBits = Object.keys(users.Flags)
@@ -38,19 +38,19 @@ try {
   users.del(testName);
 
   // Should create the first time, and not the second
-  assert.strictEqual(
+  assert.equal(
     users.add(testName, testPassword, users.Flags.DONT_EXPIRE_PASSWD),
     true,
   );
-  assert.strictEqual(
+  assert.equal(
     users.add(testName, testPassword, users.Flags.DONT_EXPIRE_PASSWD),
     false,
   );
 
   // Likewise for creating the profile, but it returns the profile path.
   const testProfile = users.createProfile(testName);
-  assert.strictEqual(typeof testProfile, "string");
-  assert.strictEqual(users.createProfile(testName), null);
+  assert.equal(typeof testProfile, "string");
+  assert.equal(users.createProfile(testName), null);
 
   const testUser = users.get(testName);
   console.log(
@@ -69,24 +69,41 @@ try {
     error => error.errno === 1327, // can't logonUser for users without a password.
   );
 
+  users.set(testName, {});
+  const testUser2 = users.get(testName);
+  assert.deepEqual(testUser2, testUser);
+  const testSetOptions = {
+    full_name: "The Test User",
+    flags: users.Flags.DONT_EXPIRE_PASSWD,
+  };
+  users.set(testName, testSetOptions);
+  const testUser3 = users.get(testName);
+  assert.deepEqual(testUser3, {
+    ...testUser,
+    ...testSetOptions,
+    // Some flags are required:
+    flags:
+      testSetOptions.flags | users.Flags.NORMAL_ACCOUNT | users.Flags.SCRIPT,
+  });
+
   const testPassword2 = "Pa$$w0rd!";
   users.changePassword(testName, testPassword, testPassword2);
 
   const handle = users.logonUser(testName, testPassword2);
   console.log("Logon Token: %O", handle);
   const getProfile = users.getUserProfileDirectory(handle);
-  assert.strictEqual(getProfile, testProfile);
+  assert.equal(getProfile, testProfile);
   users.impersonateLoggedOnUser(handle);
   users.revertToSelf();
   users.closeHandle(handle);
 
   // Should delete the first time, and not the second.
-  assert.strictEqual(users.deleteProfile(testName), true);
-  assert.strictEqual(users.deleteProfile(testName), false);
+  assert.equal(users.deleteProfile(testName), true);
+  assert.equal(users.deleteProfile(testName), false);
 
   // Likewise for deleting the user
-  assert.strictEqual(users.del(testName), true);
-  assert.strictEqual(users.del(testName), false);
+  assert.equal(users.del(testName), true);
+  assert.equal(users.del(testName), false);
 } catch (e) {
   if (e.errno) {
     console.error("Failed with errno %d", e.errno);

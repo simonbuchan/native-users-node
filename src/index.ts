@@ -112,6 +112,25 @@ export function del(name: string): boolean {
   return native.del(name);
 }
 
+export function changePassword(
+  name: string,
+  oldPassword: string,
+  newPassword: string,
+): void {
+  return native.changePassword(name, oldPassword, newPassword);
+}
+
+export interface SetOptions {
+  full_name?: string;
+  flags?: number;
+}
+
+export function set(name: string, options: SetOptions): void {
+  assert(typeof name === "string");
+  assert(typeof options === "object" && options !== null);
+  return native.set(name, options);
+}
+
 export function createProfile(name: string): string | null {
   assert(typeof name === "string");
   return native.createProfile(name);
@@ -120,14 +139,6 @@ export function createProfile(name: string): string | null {
 export function deleteProfile(name: string): boolean {
   assert(typeof name === "string");
   return native.deleteProfile(name);
-}
-
-export function changePassword(
-  name: string,
-  oldPassword: string,
-  newPassword: string,
-): void {
-  return native.changePassword(name, oldPassword, newPassword);
 }
 
 export function logonUser(

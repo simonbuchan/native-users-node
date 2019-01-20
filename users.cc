@@ -96,15 +96,17 @@ struct sid_string {
     sid_string& operator=(const sid_string&) = delete;
 };
 
+#define GET(obj, name) Nan::Get(obj, new_str_obj(L ## #name))
+#define SET(obj, name, value) Nan::Set(obj, new_str_obj(L ## #name), value)
+
 NAN_METHOD(get) {
     string_value name(info[0]);
 
     auto res = Nan::New<v8::Object>();
     info.GetReturnValue().Set(res);
 
-#define SET(name, value) Nan::Set(res, new_str_obj(L ## #name), value)
-#define SET_STR(name) SET(name, new_str_obj(user->usri23_##name))
-#define SET_UINT(name) SET(name, Nan::New((uint32_t) user->usri23_##name).As<v8::Object>())
+#define SET_STR(name) SET(res, name, new_str_obj(user->usri23_##name))
+#define SET_UINT(name) SET(res, name, Nan::New((uint32_t) user->usri23_##name).As<v8::Object>())
 
     NET_USER_INFO(23) user;
 
@@ -125,10 +127,9 @@ NAN_METHOD(get) {
         return;
     }
 
-    SET(sid, new_str_obj(sid.str));
+    SET(res, sid, new_str_obj(sid.str));
 #undef SET_STR
 #undef SET_UINT
-#undef SET
 }
 
 NAN_METHOD(add) {
@@ -195,22 +196,6 @@ user_status_e get_user_sid(LPWSTR name, sid_string* sid) {
     return user_status_e::exists;
 }
 
-NAN_METHOD(changePassword) {
-    string_value name(info[0]);
-    string_value oldPassword(info[1]);
-    string_value newPassword(info[2]);
-
-    auto nerr = NetUserChangePassword(
-        NULL, // servername,
-        *name,
-        *oldPassword,
-        *newPassword);
-
-    if (nerr != NERR_Success) {
-        return ThrowWin32Error(nerr, "NetUserChangePassword");
-    }
-}
-
 NAN_METHOD(createProfile) {
     string_value name(info[0]);
 
@@ -257,6 +242,55 @@ NAN_METHOD(deleteProfile) {
             info.GetReturnValue().Set(false);
         } else {
             return ThrowWin32Error(error, "DeleteProfileW");
+        }
+    }
+}
+
+NAN_METHOD(changePassword) {
+    string_value name(info[0]);
+    string_value oldPassword(info[1]);
+    string_value newPassword(info[2]);
+
+    auto nerr = NetUserChangePassword(
+        NULL, // servername,
+        *name,
+        *oldPassword,
+        *newPassword);
+
+    if (nerr != NERR_Success) {
+        return ThrowWin32Error(nerr, "NetUserChangePassword");
+    }
+}
+
+NAN_METHOD(set) {
+    string_value name(info[0]);
+    auto options = info[1].As<v8::Object>();
+
+    v8::Local<v8::Value> full_name_value;
+    if (!Nan::Get(options, new_str_obj(L"full_name")).ToLocal(&full_name_value)) {
+        return;
+    }
+
+    v8::Local<v8::Value> flags_value;
+    if (!Nan::Get(options, new_str_obj(L"flags")).ToLocal(&flags_value)) {
+        return;
+    }
+
+    if (!flags_value->IsUndefined()) {
+        auto value = flags_value->Uint32Value();
+        USER_INFO_1008 info = { value };
+        auto nerr = NetUserSetInfo(NULL, *name, 1008, (LPBYTE) &info, NULL);
+        if (nerr != NERR_Success) {
+            return ThrowWin32Error(nerr, "NetUserSetInfo");
+        }
+    }
+
+    if (!full_name_value->IsUndefined()) {
+        string_value value(full_name_value);
+        USER_INFO_1011 info = { *value };
+        auto nerr = NetUserSetInfo(NULL, *name, 1011, (LPBYTE) &info, NULL);
+        if (nerr != NERR_Success) {
+            return ThrowWin32Error(nerr, "NetUserSetInfo");
         }
     }
 }
@@ -345,9 +379,10 @@ NAN_MODULE_INIT(Init) {
     NAN_EXPORT(target, get);
     NAN_EXPORT(target, add);
     NAN_EXPORT(target, del);
-    NAN_EXPORT(target, changePassword);
     NAN_EXPORT(target, createProfile);
     NAN_EXPORT(target, deleteProfile);
+    NAN_EXPORT(target, changePassword);
+    NAN_EXPORT(target, set);
     NAN_EXPORT(target, logonUser);
     NAN_EXPORT(target, closeHandle);
     NAN_EXPORT(target, impersonateLoggedOnUser);
