@@ -77,6 +77,10 @@ try {
     flags: users.Flags.DONT_EXPIRE_PASSWD,
   };
   users.set(testName, testSetOptions);
+  users.set(testName, {
+    full_name: undefined,
+    flags: undefined,
+  });
   const testUser3 = users.get(testName);
   assert.deepEqual(testUser3, {
     ...testUser,
