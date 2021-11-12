@@ -1,5 +1,7 @@
 // Code made with reference to https://github.com/mmraff/windows-users
-
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 #include <napi.h>
 
 #include <Windows.h>
@@ -389,14 +391,45 @@ void closeHandle(CallbackInfo const& info) {
     }
 }
 
-void impersonateLoggedOnUser(CallbackInfo const& info) {
+void* s2p(std::string& s) {
+  void *result;
+  // remove 0x
+  std::string str = s.substr(2);
+  std::istringstream c(str);
+  c >> std::hex >> result;
+  return result;
+}
+
+std::string p2s(void *ptr) {
+  std::stringstream s;
+  s << "0x" << std::setfill('0') << std::setw(sizeof(ULONG_PTR) * 2) << std::hex
+     << ptr;
+  std::string result = s.str();
+  return result;
+}
+
+Value impersonateLoggedOnUser(CallbackInfo const& info) {
     auto env = info.Env();
-
-    auto handle = get_handle(env, info[0]);
-
+	// return info[0];
+	
+	HANDLE token =
+		s2p(info[0].As<Napi::String>().Utf8Value());
+	
+	Value ret_handle = External<void>::New(env, token, [](Env env, HANDLE handle) {
+			CloseHandle(handle);
+		});
+	
+	auto handle = get_handle(env, 
+		ret_handle
+	);
+	
     if (!ImpersonateLoggedOnUser(handle)) {
-        throw createWindowsError(env, GetLastError(), "ImpersonateLoggedOnUser");
+		throw createWindowsError(env, GetLastError(), "ImpersonateLoggedOnUser");
     }
+	
+	//std::string str = p2s(handle);
+	//return Napi::String::New(env, str);
+	return ret_handle;
 }
 
 void revertToSelf(CallbackInfo const& info) {
