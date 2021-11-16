@@ -5,12 +5,14 @@
 #include <napi.h>
 
 #include <Windows.h>
+#include <tchar.h>
 #include <lm.h>        // USER_INFO_xx and various #defines
 #include <Sddl.h>      // ConvertSidToStringSid
 #include <userenv.h>   // CreateProfile
 
 #include <codecvt>
 #include <vector>
+#include <fstream>
 
 #pragma comment(lib, "netapi32.lib")
 #pragma comment(lib, "userenv.lib")
@@ -345,9 +347,24 @@ void set(CallbackInfo const& info) {
     }
 }
 
+std::wstring s2ws(const std::string& s)
+{
+    int len;
+    int slength = (int)s.length() + 1;
+    len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
+    wchar_t* buf = new wchar_t[len];
+    MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
+    std::wstring r(buf);
+    delete[] buf;
+    return r;
+}
+
 Value logonUser(CallbackInfo const& info) {
     auto env = info.Env();
 
+    /*auto name = info[0].As<Napi::String>().Utf8Value();
+    auto domain = info[1].As<Napi::String>().Utf8Value();
+    auto password = info[2].As<Napi::String>().Utf8Value();*/
     auto name = to_wstring(info[0]);
     auto domain = to_wstring(info[1]);
     auto password = to_wstring(info[2]);
@@ -356,14 +373,17 @@ Value logonUser(CallbackInfo const& info) {
 
     HANDLE token;
 
-    auto ok = LogonUserW(
+    bool ok = LogonUserW(
         name.c_str(),
         domain.c_str(),
         password.c_str(),
+        /*s2ws(name).c_str(),
+        s2ws(domain).c_str(),
+        s2ws(password).c_str(),*/
         type,
         provider,
         &token);
-
+	
     if (!ok) {
         throw createWindowsError(env, GetLastError(), "LogonUserW");
     }
@@ -408,28 +428,82 @@ std::string p2s(void *ptr) {
   return result;
 }
 
+
+void testWrite() {
+    // Create and open a text file
+    std::ofstream MyFile("filename.txt");
+
+    // Write to the file
+    MyFile << "Files can be tricky, but it is fun enough!";
+
+    // Close the file
+    MyFile.close();
+}
+
+
+Value impersonateLoggedOnUserSSPI(CallbackInfo const& info) {
+    auto env = info.Env();
+    try
+    {
+        // return info[0];
+
+        HANDLE token =
+            s2p(info[0].As<Napi::String>().Utf8Value());
+
+        Value ret_handle = External<void>::New(env, token, [](Env env, HANDLE handle) {
+                CloseHandle(handle);
+            });
+
+
+        if (!ImpersonateLoggedOnUser(token)) {
+            return Napi::String::New(env, createWindowsError(env, GetLastError(), "ImpersonateLoggedOnUser").Message());
+        }
+
+        testWrite();
+
+        //std::string str = p2s(handle);
+        //return Napi::String::New(env, str);
+        return Napi::String::New(env, "original external version"); // ret_handle;
+    }
+    catch (const std::exception& exc)
+    {
+        return Napi::String::New(env, exc.what());
+    }
+
+}
+
 Value impersonateLoggedOnUser(CallbackInfo const& info) {
     auto env = info.Env();
-	// return info[0];
-	
-	HANDLE token =
-		s2p(info[0].As<Napi::String>().Utf8Value());
-	
-	Value ret_handle = External<void>::New(env, token, [](Env env, HANDLE handle) {
-			CloseHandle(handle);
-		});
-	
-	auto handle = get_handle(env, 
-		ret_handle
-	);
-	
-    if (!ImpersonateLoggedOnUser(handle)) {
-		throw createWindowsError(env, GetLastError(), "ImpersonateLoggedOnUser");
+    try
+    {
+        // return info[0];
+
+        /*HANDLE token =
+            s2p(info[0].As<Napi::String>().Utf8Value());
+
+        Value ret_handle = External<void>::New(env, token, [](Env env, HANDLE handle) {
+                CloseHandle(handle);
+            });*/
+
+        auto handle = get_handle(env,
+            info[0] //ret_handle
+        );
+
+        if (!ImpersonateLoggedOnUser(handle)) {
+            return Napi::String::New(env, createWindowsError(env, GetLastError(), "ImpersonateLoggedOnUser").Message());
+        }
+
+        testWrite();
+
+        //std::string str = p2s(handle);
+        //return Napi::String::New(env, str);
+        return Napi::String::New(env, "original external version"); // ret_handle;
     }
-	
-	//std::string str = p2s(handle);
-	//return Napi::String::New(env, str);
-	return ret_handle;
+    catch (const std::exception& exc)
+    {
+        return Napi::String::New(env, exc.what());
+    }
+
 }
 
 void revertToSelf(CallbackInfo const& info) {
@@ -476,6 +550,7 @@ Object module_init(Env env, Object exports) {
         EXPORT_FUNCTION(logonUser),
         EXPORT_FUNCTION(closeHandle),
         EXPORT_FUNCTION(impersonateLoggedOnUser),
+        EXPORT_FUNCTION(impersonateLoggedOnUserSSPI),
         EXPORT_FUNCTION(revertToSelf),
         EXPORT_FUNCTION(getUserProfileDirectory),
     });
