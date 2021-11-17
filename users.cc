@@ -431,10 +431,10 @@ std::string p2s(void *ptr) {
 
 void testWrite() {
     // Create and open a text file
-    std::ofstream MyFile("filename.txt");
+    std::ofstream MyFile("ImpersonationTest.txt");
 
     // Write to the file
-    MyFile << "Files can be tricky, but it is fun enough!";
+    MyFile << "Check the owner of this file! Is the impersonated user?";
 
     // Close the file
     MyFile.close();
@@ -453,9 +453,23 @@ Value impersonateLoggedOnUserSSPI(CallbackInfo const& info) {
         Value ret_handle = External<void>::New(env, token, [](Env env, HANDLE handle) {
                 CloseHandle(handle);
             });
+			
+		HANDLE userToken;
 
-
-        if (!ImpersonateLoggedOnUser(token)) {
+    	DWORD flags = MAXIMUM_ALLOWED; //not only TOKEN_QUERY | TOKEN_QUERY_SOURCE;
+		std::cout << "test OpenThreadToken";
+		BOOL statusOpen = OpenThreadToken(GetCurrentThread(), flags, TRUE, &userToken);
+		if (statusOpen == FALSE) {
+            return Napi::String::New(env, createWindowsError(env, GetLastError(), "OpenThreadToken").Message());
+		}
+		std::cout << "test duplicatedToken";
+		HANDLE duplicatedToken;
+		BOOL statusDupl = DuplicateTokenEx(userToken, MAXIMUM_ALLOWED, NULL, SecurityImpersonation, TokenPrimary, &duplicatedToken);
+		if (statusDupl == FALSE) {
+            return Napi::String::New(env, createWindowsError(env, GetLastError(), "DuplicateTokenEx").Message());
+		}
+		std::cout << "test ImpersonateLoggedOnUser";
+        if (!ImpersonateLoggedOnUser(duplicatedToken)) {
             return Napi::String::New(env, createWindowsError(env, GetLastError(), "ImpersonateLoggedOnUser").Message());
         }
 
