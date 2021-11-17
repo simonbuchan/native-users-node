@@ -447,37 +447,38 @@ Value impersonateLoggedOnUserSSPI(CallbackInfo const& info) {
     {
         // return info[0];
 
-        HANDLE token =
+        /*HANDLE token =
             s2p(info[0].As<Napi::String>().Utf8Value());
 
         Value ret_handle = External<void>::New(env, token, [](Env env, HANDLE handle) {
                 CloseHandle(handle);
-            });
+            });*/
 			
 		HANDLE userToken;
-
     	DWORD flags = MAXIMUM_ALLOWED; //not only TOKEN_QUERY | TOKEN_QUERY_SOURCE;
-		std::cout << "test OpenThreadToken";
+		
 		BOOL statusOpen = OpenThreadToken(GetCurrentThread(), flags, TRUE, &userToken);
 		if (statusOpen == FALSE) {
             return Napi::String::New(env, createWindowsError(env, GetLastError(), "OpenThreadToken").Message());
 		}
-		std::cout << "test duplicatedToken";
+		
 		HANDLE duplicatedToken;
 		BOOL statusDupl = DuplicateTokenEx(userToken, MAXIMUM_ALLOWED, NULL, SecurityImpersonation, TokenPrimary, &duplicatedToken);
 		if (statusDupl == FALSE) {
             return Napi::String::New(env, createWindowsError(env, GetLastError(), "DuplicateTokenEx").Message());
 		}
-		std::cout << "test ImpersonateLoggedOnUser";
+		
         if (!ImpersonateLoggedOnUser(duplicatedToken)) {
             return Napi::String::New(env, createWindowsError(env, GetLastError(), "ImpersonateLoggedOnUser").Message());
         }
 
         testWrite();
-
+		RevertToSelf();
+		CloseHandle(duplicatedToken);
+		CloseHandle(userToken);
         //std::string str = p2s(handle);
         //return Napi::String::New(env, str);
-        return Napi::String::New(env, "original external version"); // ret_handle;
+        return Napi::String::New(env, "SSPI external version OK"); // ret_handle;
     }
     catch (const std::exception& exc)
     {
